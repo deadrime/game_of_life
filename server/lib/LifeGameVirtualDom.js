@@ -14,6 +14,7 @@ class LifeGameVirtualDom {
 		this.population = 0;
 		this._affectedPoints = {};
 		this._updateInterval = updateInterval;
+		this.pauseID = null;
 
 		this._initField();
 		this._start();
@@ -38,11 +39,21 @@ class LifeGameVirtualDom {
 	}
 
 	_start() {
-		setInterval(() => {
+		this.pauseID = setInterval(() => {
 			this._step();
 		}, this._updateInterval);
 	}
 
+	pause() {
+		if (this.pauseID) {
+			clearInterval(this.pauseID);
+		}
+	}
+
+	resume() {
+		this._start();
+	}
+ 
 	applyUpdates(data) {
 		const {
 			user,
