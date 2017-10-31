@@ -1,5 +1,5 @@
 'use strict';
-const WebSocketServer = new require('ws');
+const WebSocket = new require('ws');
 const url = require('url');
 const LifeGame = require('../lib/LifeGameVirtualDom');
 const randomHexColor = require('random-hex-color')
@@ -12,39 +12,46 @@ class LifeGameCommunicator {
         this.init();
     }
 
+    verifyClient(args) {
+        const token = url.parse(args.req.url, true).query.token;
+        console.log(`Successful authorization, token ${token}`);
+        if (!token) {
+            ws.terminate();
+            return false;
+        }
+        return true;
+    }
+
     init() {
-        this.webSocketServer = new WebSocketServer.Server({port: 1337});
+        const port = 1337;
+        const verifyClient = this.verifyClient;
+        this.webSocketServer = new WebSocket.Server({
+            port: port, 
+            verifyClient
+        });
         this.webSocketServer.on('connection', this.connection.bind(this));
     }
 
     connection(ws, req) {
         ws.upgradeReq = req;
         const token = url.parse(req.url, true).query.token;
-        
-        if (!token) {
-            ws.terminate();
-            return;
-        }
-
         this.initConnection(token,ws);
 
         ws.on('message', (msg) => {
-            //console.log(msg);
             msg = JSON.parse(msg);
             switch(msg.type) {
                 case 'ADD_POINT':
                     this.updateState(token, msg.data);
                     break;
                 default:
-                    console.log('Неизвестный тип');
+                    console.log(`Unknown message type: ${msg.type}`);
             }
         });
 
         ws.on('close', () => {
             console.log(`Client with token ${token} disconnected`);
             this.clients[token].pause = true;
-            this.clients[token].game.pause();   
-            //delete this.clients[token]; // короче вот это немного не работает - this.clients[token].game.sendUpdates() все равно работает и сервак крашится на ws.send()
+            this.clients[token].game.pause();
         });
     }
     
@@ -60,7 +67,7 @@ class LifeGameCommunicator {
                 color: color
             }
         }
-        else { // иначе - возобновляем старую
+        else { // иначе - возобновляем старую сессию
             console.log(`Client with token ${token} reconnected`);
             this.clients[token].ws = ws; 
             this.clients[token].pause = false;
