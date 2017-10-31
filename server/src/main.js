@@ -20,6 +20,12 @@ class LifeGameCommunicator {
     connection(ws, req) {
         ws.upgradeReq = req;
         const token = url.parse(req.url, true).query.token;
+        
+        if (!token) {
+            ws.terminate();
+            return;
+        }
+
         this.initConnection(token,ws);
 
         ws.on('message', (msg) => {
